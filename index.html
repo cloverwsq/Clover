@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>闹钟</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #0f0f1a;
+      color: #e0e0ff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      gap: 40px;
+    }
+
+    /* ── 时钟区域 ── */
+    .clock-section {
+      text-align: center;
+    }
+
+    #time-display {
+      font-size: clamp(56px, 12vw, 120px);
+      font-weight: 200;
+      letter-spacing: 4px;
+      color: #c8aaff;
+      text-shadow: 0 0 40px #7c3aed88;
+      line-height: 1;
+    }
+
+    #date-display {
+      margin-top: 8px;
+      font-size: 18px;
+      color: #888aaa;
+      letter-spacing: 2px;
+    }
+
+    /* ── 添加闹钟表单 ── */
+    .add-alarm {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .add-alarm input[type="time"] {
+      padding: 12px 18px;
+      font-size: 22px;
+      background: #1e1e2e;
+      border: 1px solid #3a3a5a;
+      border-radius: 12px;
+      color: #c8aaff;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .add-alarm input[type="time"]:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px #7c3aed33;
+    }
+
+    .add-alarm input[type="text"] {
+      padding: 12px 18px;
+      font-size: 16px;
+      background: #1e1e2e;
+      border: 1px solid #3a3a5a;
+      border-radius: 12px;
+      color: #e0e0ff;
+      outline: none;
+      width: 180px;
+    }
+
+    .add-alarm input[type="text"]::placeholder { color: #555570; }
+
+    .add-alarm input[type="text"]:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px #7c3aed33;
+    }
+
+    .btn-add {
+      padding: 12px 28px;
+      font-size: 16px;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-add:hover { background: #6d28d9; }
+    .btn-add:active { transform: scale(0.97); }
+
+    /* ── 闹钟列表 ── */
+    .alarm-list {
+      width: min(480px, 90vw);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .alarm-list h2 {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #555570;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .alarm-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: #1e1e2e;
+      border: 1px solid #2a2a3e;
+      border-radius: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .alarm-item.active { border-color: #7c3aed66; }
+    .alarm-item.ringing { border-color: #f59e0b; animation: ring-pulse 0.6s infinite alternate; }
+
+    @keyframes ring-pulse {
+      from { box-shadow: 0 0 0 0 #f59e0b33; }
+      to   { box-shadow: 0 0 0 10px #f59e0b00; }
+    }
+
+    .alarm-left { display: flex; flex-direction: column; gap: 4px; }
+
+    .alarm-time {
+      font-size: 28px;
+      font-weight: 300;
+      color: #c8aaff;
+      letter-spacing: 2px;
+    }
+
+    .alarm-label { font-size: 13px; color: #666680; }
+
+    .alarm-right { display: flex; align-items: center; gap: 14px; }
+
+    /* 开关 */
+    .toggle {
+      position: relative;
+      width: 48px;
+      height: 26px;
+    }
+
+    .toggle input { display: none; }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #2a2a3e;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle input:checked + .toggle-track { background: #7c3aed; }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+      pointer-events: none;
+    }
+
+    .toggle input:checked ~ .toggle-thumb { transform: translateX(22px); }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #444460;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      transition: color 0.15s;
+      line-height: 1;
+    }
+
+    .btn-delete:hover { color: #ef4444; }
+
+    /* 铃声弹窗 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0008;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: #1e1e2e;
+      border: 1px solid #7c3aed;
+      border-radius: 20px;
+      padding: 40px 48px;
+      text-align: center;
+      box-shadow: 0 0 60px #7c3aed44;
+      animation: pop-in 0.25s ease;
+    }
+
+    @keyframes pop-in {
+      from { transform: scale(0.85); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    .modal .bell { font-size: 56px; animation: shake 0.4s infinite; display: inline-block; }
+
+    @keyframes shake {
+      0%,100% { transform: rotate(-12deg); }
+      50%      { transform: rotate(12deg); }
+    }
+
+    .modal h3 { margin-top: 16px; font-size: 22px; color: #c8aaff; }
+    .modal p  { margin-top: 6px; color: #888aaa; font-size: 15px; }
+
+    .btn-dismiss {
+      margin-top: 24px;
+      padding: 12px 36px;
+      background: #7c3aed;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-dismiss:hover { background: #6d28d9; }
+
+    .empty-hint {
+      text-align: center;
+      color: #333350;
+      font-size: 14px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 时钟 -->
+  <div class="clock-section">
+    <div id="time-display">00:00:00</div>
+    <div id="date-display"></div>
+  </div>
+
+  <!-- 添加闹钟 -->
+  <div class="add-alarm">
+    <input type="time" id="alarm-time-input" />
+    <input type="text" id="alarm-label-input" placeholder="备注（可选）" maxlength="20" />
+    <button class="btn-add" id="btn-add">添加闹钟</button>
+  </div>
+
+  <!-- 闹钟列表 -->
+  <div class="alarm-list">
+    <h2>我的闹钟</h2>
+    <div id="alarm-container"></div>
+  </div>
+
+  <!-- 弹窗 -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <span class="bell">🔔</span>
+      <h3 id="modal-title">时间到！</h3>
+      <p id="modal-label"></p>
+      <button class="btn-dismiss" id="btn-dismiss">关闭闹钟</button>
+    </div>
+  </div>
+
+  <script>
+    // ── 时钟 ──────────────────────────────────────────────
+    const timeEl = document.getElementById('time-display');
+    const dateEl = document.getElementById('date-display');
+    const WEEK = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+
+    function updateClock() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      timeEl.textContent = `${hh}:${mm}:${ss}`;
+
+      const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日  ${WEEK[now.getDay()]}`;
+      dateEl.textContent = dateStr;
+
+      checkAlarms(`${hh}:${mm}:${ss}`, `${hh}:${mm}`);
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // ── 闹钟数据 ──────────────────────────────────────────
+    let alarms = JSON.parse(localStorage.getItem('alarms') || '[]');
+    let ringingIds = new Set();
+
+    function saveAlarms() {
+      localStorage.setItem('alarms', JSON.stringify(alarms));
+    }
+
+    // ── 渲染列表 ──────────────────────────────────────────
+    function renderAlarms() {
+      const container = document.getElementById('alarm-container');
+      if (alarms.length === 0) {
+        container.innerHTML = '<p class="empty-hint">暂无闹钟，请添加</p>';
+        return;
+      }
+      container.innerHTML = alarms.map((a, i) => `
+        <div class="alarm-item ${a.enabled ? 'active' : ''}" id="alarm-${a.id}">
+          <div class="alarm-left">
+            <span class="alarm-time">${a.time}</span>
+            <span class="alarm-label">${a.label || '闹钟'}</span>
+          </div>
+          <div class="alarm-right">
+            <label class="toggle">
+              <input type="checkbox" ${a.enabled ? 'checked' : ''}
+                onchange="toggleAlarm('${a.id}', this.checked)" />
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+            <button class="btn-delete" onclick="deleteAlarm('${a.id}')" title="删除">✕</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── 添加闹钟 ──────────────────────────────────────────
+    document.getElementById('btn-add').addEventListener('click', () => {
+      const timeVal = document.getElementById('alarm-time-input').value;
+      if (!timeVal) { alert('请先选择时间'); return; }
+      const labelVal = document.getElementById('alarm-label-input').value.trim();
+
+      alarms.push({
+        id: Date.now().toString(),
+        time: timeVal,
+        label: labelVal,
+        enabled: true
+      });
+
+      saveAlarms();
+      renderAlarms();
+      document.getElementById('alarm-label-input').value = '';
+    });
+
+    // ── 开关闹钟 ──────────────────────────────────────────
+    function toggleAlarm(id, enabled) {
+      const a = alarms.find(x => x.id === id);
+      if (a) { a.enabled = enabled; saveAlarms(); renderAlarms(); }
+    }
+
+    // ── 删除闹钟 ──────────────────────────────────────────
+    function deleteAlarm(id) {
+      alarms = alarms.filter(x => x.id !== id);
+      ringingIds.delete(id);
+      saveAlarms();
+      renderAlarms();
+    }
+
+    // ── 检查闹钟 ──────────────────────────────────────────
+    let lastTriggerMinute = '';
+
+    function checkAlarms(hhmmss, hhmm) {
+      if (hhmm === lastTriggerMinute) return;
+
+      alarms.forEach(a => {
+        if (a.enabled && a.time === hhmm && !ringingIds.has(a.id)) {
+          lastTriggerMinute = hhmm;
+          ringingIds.add(a.id);
+          triggerAlarm(a);
+        }
+      });
+    }
+
+    // ── 触发弹窗 ──────────────────────────────────────────
+    let audioCtx = null;
+    let beepInterval = null;
+
+    function playBeep() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtx;
+
+      function beep() {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+      }
+
+      beep();
+      beepInterval = setInterval(beep, 800);
+    }
+
+    function stopBeep() {
+      clearInterval(beepInterval);
+      beepInterval = null;
+    }
+
+    function triggerAlarm(alarm) {
+      document.getElementById('modal-title').textContent = `⏰ ${alarm.time} 到了！`;
+      document.getElementById('modal-label').textContent = alarm.label || '';
+      document.getElementById('modal').classList.add('show');
+
+      const item = document.getElementById(`alarm-${alarm.id}`);
+      if (item) item.classList.add('ringing');
+
+      playBeep();
+    }
+
+    document.getElementById('btn-dismiss').addEventListener('click', () => {
+      document.getElementById('modal').classList.remove('show');
+      stopBeep();
+      ringingIds.forEach(id => {
+        const item = document.getElementById(`alarm-${id}`);
+        if (item) item.classList.remove('ringing');
+      });
+    });
+
+    // ── 初始化 ────────────────────────────────────────────
+    renderAlarms();
+
+    // 默认填入当前时间的下一分钟
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 1);
+    const dh = String(now.getHours()).padStart(2,'0');
+    const dm = String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('alarm-time-input').value = `${dh}:${dm}`;
+  </script>
+</body>
+</html>
